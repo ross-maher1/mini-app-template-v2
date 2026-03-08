@@ -67,9 +67,16 @@ The power of this architecture: each mini-app is simple and focused, but the com
 
 ### 3.1 Clone and Install
 
+> **Important:** This is not configured as a GitHub template repo, so `gh repo create --template` will not work. Clone it manually and create a new repo instead.
+
 ```bash
-git clone <this-repo> my-app-name
+git clone https://github.com/ross-maher1/mini-app-template-v2.git my-app-name
 cd my-app-name
+rm -rf .git
+git init
+git add .
+git commit -m "Initial commit from mini-app-template-v2"
+gh repo create my-app-name --public --source=. --remote=origin --push
 npm install
 ```
 
@@ -89,7 +96,19 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
 
 Find these at: **Supabase Dashboard > Settings > API**
 
-### 3.3 Run Database Migrations
+### 3.3 Configure Supabase Auth
+
+In the Supabase Dashboard, go to **Authentication → Sign In / Providers → Email** and:
+
+- **Disable "Confirm email"** — This means signup immediately creates an active session. With it enabled, users must click a confirmation email before they can log in, which requires additional redirect URL configuration and complicates local development.
+
+Also go to **Authentication → URL Configuration** and add to **Redirect URLs**:
+```
+http://localhost:3000/**
+```
+For production, also add: `https://your-domain.com/**`
+
+### 3.4 Run Database Migrations
 
 Go to **Supabase Dashboard > SQL Editor > New Query**.
 
@@ -103,9 +122,9 @@ Run each migration file in order. Copy and paste the SQL from:
 
 **Important:**
 - Migrations 001–004 are **shared** across all mini-apps. If another mini-app has already run them against this Supabase project, they are safe to re-run (idempotent) but not required again.
-- Migration 005 is for the **demo page only**. Delete it when building your real app.
+- Migration 005 is for the **demo page only**. Replace it with your own feature migration when building your real app.
 
-### 3.4 Start Development
+### 3.5 Start Development
 
 ```bash
 npm run dev
@@ -113,15 +132,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). You should be redirected to the login page.
 
-### 3.5 Test the Full Flow
+> **Stale cookie warning:** If you've previously run other Supabase projects on `localhost:3000`, your browser may have stale `sb-` auth cookies from those projects. These cause auth to silently fail. Fix: DevTools → Application → Cookies → `http://localhost:3000` → delete all cookies starting with `sb-`.
 
-1. Click "Sign up" and create an account
-2. Check your email for the confirmation link
-3. Click the link — you'll be redirected to the dashboard
-4. Navigate to the Notes demo page — create, edit, delete notes
-5. Go to Settings — see your profile info
-6. Sign out — confirm you're redirected to login
-7. Try accessing `/demo` directly — confirm you're redirected to login
+### 3.6 Test the Full Flow
+
+1. Click "Sign up" and create an account — you should be redirected to the dashboard immediately (no email confirmation required)
+2. Navigate to the Notes demo page — create and delete notes
+3. Go to Settings — see your profile info
+4. Sign out — confirm you're redirected to login
+5. Sign back in — confirm notes are still there
+6. Try accessing `/demo` directly without being logged in — confirm you're redirected to login
 
 If all of this works, the template is functioning correctly.
 
@@ -176,7 +196,27 @@ const protectedPaths = ["/", "/demo", "/settings"];
 
 **When you add new pages**, update this array. If a path is not in this array, unauthenticated users can access it.
 
-### 4.5 What NOT to Change
+### 4.5 The AuthContext and `onAuthStateChange`
+
+`AuthContext.tsx` manages auth state in React. A critical implementation detail:
+
+- `onAuthStateChange` is kept **synchronous** — it only handles `SIGNED_OUT` and `TOKEN_REFRESHED` events. It does **not** do async work like fetching the user profile.
+- All profile fetching happens in `initializeAuth()`, which runs once on mount after a page load.
+- `signIn()` and `signUp()` simply call Supabase and return — they do not update React state directly.
+
+**Why this matters:** If you add async profile fetching to `onAuthStateChange`, it creates a race condition with the `window.location.href` redirect that happens after login — leading to auth hangs or infinite loops.
+
+### 4.6 Why `window.location.href` Instead of `router.push`
+
+After a successful login or signup, the auth pages use `window.location.href = "/"` (full page reload), not `router.push("/")` (client-side navigation). This is required:
+
+- `router.push` does a **client-side** navigation — Next.js middleware does **not** re-run
+- Without middleware running, auth cookies are not refreshed on the response
+- `window.location.href` triggers a full HTTP request → middleware runs → cookies are set → `initializeAuth()` fires on the new page with a valid session
+
+**Never use `router.push` for post-auth redirects.**
+
+### 4.7 What NOT to Change
 
 Do not modify the following without understanding the implications:
 
@@ -184,6 +224,7 @@ Do not modify the following without understanding the implications:
 - The cookie `getAll`/`setAll` handlers — they are the bridge between Next.js and Supabase
 - The middleware matcher pattern — it must exclude static assets but run on all page routes
 - The `AuthProvider` wrapping in `layout.tsx` — all pages need auth context
+- The sync/async split in `AuthContext.tsx` `onAuthStateChange` — see section 4.5
 
 ---
 
@@ -193,7 +234,7 @@ This is the step-by-step process for adding a new feature (e.g., "invoices") to 
 
 ### Step 1: Create the Database Migration
 
-Create a new file: `database/migrations/006_invoices.sql`
+Create a new file: `database/migrations/005_invoices.sql` (replacing `005_demo_notes.sql`)
 
 Follow this pattern:
 
@@ -403,6 +444,15 @@ For production, add your domain to Supabase:
 
 ## 9. Common Pitfalls
 
+### "Auth hangs or loops forever on localhost"
+**Cause:** Stale `sb-` cookies in your browser from a previous Supabase project running on `localhost:3000`. Middleware finds a valid-looking token from an old project, auth appears to work but fails silently.
+**Fix:** DevTools → Application → Cookies → `http://localhost:3000` → delete all cookies starting with `sb-`. Then sign in fresh.
+**Prevention:** Each time you start a new project with a different Supabase project, clear these cookies first.
+
+### "Signup works but user can't log in immediately"
+**Cause:** Email confirmation is enabled in Supabase. The user must click a confirmation link before their account is active.
+**Fix:** Supabase Dashboard → Authentication → Sign In / Providers → Email → toggle off **"Confirm email"**.
+
 ### "Profile not found after signup"
 **Cause:** The `handle_new_user` trigger in migration 004 was not run.
 **Fix:** Run `database/migrations/004_triggers.sql` in Supabase SQL Editor.
@@ -445,8 +495,10 @@ If you are an AI coding agent (Claude, Codex, Cursor, etc.) building on this tem
 
 - **Do not modify** the `updateSession()` function in `src/lib/supabase/middleware.ts`
 - **Do not modify** the cookie handlers in `src/lib/supabase/client.ts` or `server.ts`
+- **Do not modify** `AuthContext.tsx` — the sync/async split in `onAuthStateChange` is intentional and critical
 - **Do not remove** the `AuthProvider` from `src/app/layout.tsx`
 - **Do not remove** the `signout` route at `src/app/auth/signout/route.ts`
+- **Do not use** `router.push` for post-auth redirects — always use `window.location.href`
 - **Do not use localStorage** for any user data — always use Supabase
 - **Do not skip RLS policies** when creating tables
 

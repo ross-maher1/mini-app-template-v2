@@ -5,24 +5,37 @@ A production-ready template for building mini-apps on the unified-user architect
 ## Quick Start
 
 ```bash
-# 1. Clone this template
-git clone <this-repo> my-app-name
+# 1. Clone the template into a new folder
+git clone https://github.com/ross-maher1/mini-app-template-v2.git my-app-name
 cd my-app-name
 
-# 2. Install dependencies
+# 2. Detach from the template's git history and create your own repo
+rm -rf .git
+git init
+git add .
+git commit -m "Initial commit from mini-app-template-v2"
+gh repo create my-app-name --public --source=. --remote=origin --push
+
+# 3. Install dependencies
 npm install
 
-# 3. Set up environment variables
+# 4. Set up environment variables
 cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
+# Edit .env.local with your Supabase credentials (Dashboard > Settings > API)
 
-# 4. Run database migrations
+# 5. Configure Supabase Auth
+# Go to Authentication > Sign In / Providers > Email
+# Disable "Confirm email" (so signup creates a session immediately)
+# Go to Authentication > URL Configuration
+# Add redirect URL: http://localhost:3000/**
+
+# 6. Run database migrations
 # Go to Supabase Dashboard > SQL Editor > New Query
 # Run each file in database/migrations/ in order (001, 002, 003, 004, 005)
 # Migrations 001-004 are shared — only run once per Supabase project
-# Migration 005 is the demo table — delete it when building your real app
+# Migration 005 is the demo table — replace it when building your real app
 
-# 5. Start the dev server
+# 7. Start the dev server
 npm run dev
 ```
 
@@ -65,6 +78,7 @@ database/
 
 ## Documentation
 
+- **[MINI_APP_GUIDE.md](./MINI_APP_GUIDE.md)** — Practical guide: full walkthrough based on a real POC, with pitfalls and fixes
 - **[HOW_TO.md](./HOW_TO.md)** — Full guide: architecture, setup, adding features, deploying
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Technical reference: auth flow, patterns, conventions
 

@@ -83,10 +83,13 @@ Browser Request
 │  Page Render                    │
 │                                 │
 │  AuthProvider initialises:      │
-│  1. auth.getSession() from      │
-│     cookies                     │
-│  2. Fetch profile from DB       │
-│  3. Subscribe to auth changes   │
+│  1. initializeAuth()            │
+│     ├─ auth.getSession()        │
+│     └─ fetchProfile(userId)     │
+│  2. onAuthStateChange listener  │
+│     (synchronous only —         │
+│      handles SIGNED_OUT and     │
+│      TOKEN_REFRESHED only)      │
 │                                 │
 │  Components use useAuth() to    │
 │  access user, profile, methods  │
@@ -94,6 +97,8 @@ Browser Request
 ```
 
 ### Sign Up Flow
+
+> Email confirmation is **disabled** in this template. Signup immediately creates an active session.
 
 ```
 User submits signup form
@@ -110,16 +115,35 @@ Supabase creates auth.users record
     │  └─ handle_new_user() inserts into profiles
     │
     ▼
-User receives confirmation email
+Session established immediately (no email confirmation step)
     │
     ▼
-User clicks link → /auth/callback
-    │
-    ├─ exchangeCodeForSession()
+window.location.href = "/"  ← full page reload (NOT router.push)
     │
     ▼
-Session established → cookies set → redirect to dashboard
+Middleware runs → cookies set → initializeAuth() fetches profile → dashboard
 ```
+
+### Sign In Flow
+
+```
+User submits login form
+    │
+    ▼
+AuthContext.signIn()
+    │
+    ├─ supabase.auth.signInWithPassword({ email, password })
+    │  └─ Returns { error } only — does NOT update React state
+    │
+    ▼
+Login page: window.location.href = redirectTo  ← full page reload (NOT router.push)
+    │
+    ▼
+Middleware runs → cookies set → initializeAuth() fetches session + profile → dashboard
+```
+
+> **Why `window.location.href` and not `router.push`?**
+> `router.push` is a client-side navigation — Next.js middleware does **not** re-run, so auth cookies are never written to the response. Always use `window.location.href` for post-auth redirects.
 
 ### Sign Out Flow
 
@@ -129,14 +153,8 @@ User clicks Sign Out
     ▼
 AuthContext.signOut()
     │
-    ├─ supabase.auth.signOut()  (client-side, clears state)
-    ├─ window.location.href = "/auth/login"
-    │
-    ▼
-OR via server route: GET /auth/signout
-    │
-    ├─ supabase.auth.signOut()  (server-side, clears cookies)
-    ├─ Redirect to /auth/login
+    ├─ supabase.auth.signOut()  (client-side, clears local state)
+    ├─ window.location.href = "/auth/login"  ← full page reload
 ```
 
 ---
@@ -147,8 +165,10 @@ OR via server route: GET /auth/signout
 
 ```typescript
 // In a "use client" component:
-const supabase = createClient();        // Browser client (singleton)
 const { user } = useAuth();             // Current user from context
+const supabase = useMemo(() => {        // Browser client — inside component, not module level
+  try { return createClient(); } catch { return null; }
+}, []);
 
 // Read (RLS ensures only user's data)
 const { data } = await supabase
@@ -243,13 +263,18 @@ const onSubmit = async (values: FooFormValues) => {
 ```typescript
 "use client";
 
+import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { createClient } from "@/lib/supabase/client";
 
-const supabase = createClient();
-
 export default function MyPage() {
   const { user } = useAuth();
+
+  // Instantiate inside the component with useMemo — handles missing env vars gracefully
+  const supabase = useMemo(() => {
+    try { return createClient(); } catch { return null; }
+  }, []);
+
   // ... state, effects, handlers
   return <main className="space-y-10">...</main>;
 }
