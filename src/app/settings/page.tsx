@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { APP_NAME } from "@/lib/constants";
 
 export default function SettingsPage() {
-  const { profile, signOut } = useAuth();
+  const { profile, sessionVersion, signOut } = useAuth();
 
   return (
     <main className="space-y-10">
@@ -18,7 +18,7 @@ export default function SettingsPage() {
       {/* Profile */}
       <div className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm max-w-lg">
         <h2 className="text-lg font-semibold">Profile</h2>
-        {profile ? (
+        {profile && sessionVersion > 0 ? (
           <div className="mt-4 space-y-3">
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">

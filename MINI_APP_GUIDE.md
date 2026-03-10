@@ -89,7 +89,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
 
 In the Supabase Dashboard, go to **Authentication → Sign In / Providers → Email** and:
 
-- **Disable "Confirm email"** — This means signup immediately creates an active session. Without this, users have to click a confirmation email before they can log in. For local development, disabling it is much simpler. You can re-enable it for production if you need it.
+- **Optional for local dev: disable "Confirm email"** — The template supports both flows. If you leave it enabled, signup shows a "check your email" state instead of creating a session immediately.
 
 Also go to **Authentication → URL Configuration** and add to **Redirect URLs**:
 ```
@@ -408,9 +408,11 @@ This is why tokens silently refresh and users never get unexpected logouts.
 ### The AuthContext
 
 `src/contexts/AuthContext.tsx` manages auth state in React:
-- On mount, `initializeAuth()` runs: calls `getSession()`, then fetches the user's profile
-- `onAuthStateChange` listens for changes but only handles `SIGNED_OUT` and `TOKEN_REFRESHED` — it does **not** do async work like fetching profiles. This is intentional and important (see below)
-- `signIn()` / `signUp()` just call Supabase and return. They do **not** update React state directly
+- `layout.tsx` seeds `initialUser` and `initialProfile` from the server so the first render starts from the request cookies
+- `onAuthStateChange` updates auth state and increments `sessionVersion`
+- A reconciliation effect runs on mount and pathname changes: it calls `getSession()`, validates with `getUser()`, refreshes the profile, and clears stale browser state when needed
+- `resetClient()` clears the cached browser singleton during sign-out and account switches
+- Client pages should wait for `sessionVersion > 0` before browser-side Supabase reads
 
 ### Why `window.location.href` instead of `router.push`
 
@@ -418,7 +420,7 @@ After a successful login or signup, pages use `window.location.href = "/"` (full
 
 - `router.push` does a client-side navigation — Next.js middleware does **not** re-run
 - Without middleware running, the new auth cookies don't get set on the response
-- `window.location.href` triggers a full HTTP request → middleware runs → cookies are set → `initializeAuth()` fires on the new page with a valid session
+- `window.location.href` triggers a full HTTP request → middleware runs → cookies are set → the browser reconciliation effect can pick up the fresh session
 
 **Never use `router.push` for post-auth redirects.**
 
@@ -442,7 +444,7 @@ After a successful login or signup, pages use `window.location.href = "/"` (full
 
 **Cause:** Email confirmation is enabled in Supabase. The user needs to click a link in their email before their account is active.
 
-**Fix:** Go to Supabase Dashboard → Authentication → Sign In / Providers → Email → toggle off **"Confirm email"**. Signup then creates an active session immediately.
+**Fix:** Either click the confirmation link from the email, or disable **"Confirm email"** in Supabase if you want signup to create a session immediately during local development.
 
 ---
 
@@ -518,7 +520,7 @@ If you are an AI agent (Claude, Cursor, etc.) building a new mini-app from this 
 ### Hard rules
 
 - **Do not modify** `updateSession()` in `src/lib/supabase/middleware.ts` — the order of operations is critical
-- **Do not modify** `AuthContext.tsx` — the sync/async split in `onAuthStateChange` is intentional
+- **Do not modify** `AuthContext.tsx` unless you preserve the server seed, browser reconciliation, `resetClient()`, and `sessionVersion` pattern
 - **Do not use** `router.push` for post-auth redirects — always use `window.location.href`
 - **Do not skip** RLS policies when creating tables
 - **Do not use** `localStorage` for user data — always use Supabase
@@ -540,4 +542,5 @@ If you are an AI agent (Claude, Cursor, etc.) building a new mini-app from this 
 - Every table has RLS enabled with user-scoped policies for all four operations
 - Every table has an `updated_at` trigger using `handle_updated_at()`
 - All auth state flows through `useAuth()` — never call Supabase auth directly in components
+- Browser-side Supabase reads wait for `sessionVersion > 0`
 - Post-auth redirects always use `window.location.href`, never `router.push`

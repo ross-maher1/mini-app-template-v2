@@ -13,8 +13,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function HomePage() {
-  const { user, profile } = useAuth();
+  const { user, profile, sessionVersion } = useAuth();
   const [noteCount, setNoteCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const userId = user?.id ?? null;
 
   const supabase = useMemo(() => {
     try {
@@ -25,22 +27,40 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user || !supabase) return;
+    if (!sessionVersion || !supabase) {
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
+      if (!userId) {
+        if (!cancelled) {
+          setNoteCount(0);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setLoading(true);
+      }
+
       const { data } = await supabase
         .from("demo_notes")
         .select("id")
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
-      if (!cancelled && data) {
-        setNoteCount(data.length);
+      if (!cancelled) {
+        setNoteCount(data?.length ?? 0);
+        setLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
-  }, [user, supabase]);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionVersion, supabase, userId]);
 
   return (
     <main className="space-y-10">
@@ -64,7 +84,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Notes</h2>
             <span className="text-2xl font-bold text-slate-900">
-              {noteCount}
+              {loading ? "—" : noteCount}
             </span>
           </div>
           <p className="mt-2 text-sm text-slate-600">

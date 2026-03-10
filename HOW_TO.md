@@ -100,7 +100,7 @@ Find these at: **Supabase Dashboard > Settings > API**
 
 In the Supabase Dashboard, go to **Authentication → Sign In / Providers → Email** and:
 
-- **Disable "Confirm email"** — This means signup immediately creates an active session. With it enabled, users must click a confirmation email before they can log in, which requires additional redirect URL configuration and complicates local development.
+- **Optional for local dev: disable "Confirm email"** — The template supports both flows. If you leave it enabled, signup shows a "check your email" confirmation state instead of creating a session immediately.
 
 Also go to **Authentication → URL Configuration** and add to **Redirect URLs**:
 ```
@@ -200,11 +200,13 @@ const protectedPaths = ["/", "/demo", "/settings"];
 
 `AuthContext.tsx` manages auth state in React. A critical implementation detail:
 
-- `onAuthStateChange` is kept **synchronous** — it only handles `SIGNED_OUT` and `TOKEN_REFRESHED` events. It does **not** do async work like fetching the user profile.
-- All profile fetching happens in `initializeAuth()`, which runs once on mount after a page load.
-- `signIn()` and `signUp()` simply call Supabase and return — they do not update React state directly.
+- `layout.tsx` seeds `initialUser` and `initialProfile` from the server so the first render starts from the request cookies, not a stale browser singleton.
+- `onAuthStateChange` updates auth state and bumps `sessionVersion` whenever the browser session changes.
+- A second reconciliation effect runs on mount and pathname changes: it calls `getSession()`, validates with `getUser()`, refreshes the profile, and clears stale state if the browser singleton disagrees with the server.
+- `resetClient()` is called whenever auth is cleared or the signed-in user changes, so cached browser state cannot leak across accounts.
+- Client pages should wait for `sessionVersion > 0` before doing browser-side Supabase reads.
 
-**Why this matters:** If you add async profile fetching to `onAuthStateChange`, it creates a race condition with the `window.location.href` redirect that happens after login — leading to auth hangs or infinite loops.
+**Why this matters:** this is the cache-reconciliation layer that prevents stale browser auth from surviving login, logout, or account switches.
 
 ### 4.6 Why `window.location.href` Instead of `router.push`
 
@@ -212,7 +214,7 @@ After a successful login or signup, the auth pages use `window.location.href = "
 
 - `router.push` does a **client-side** navigation — Next.js middleware does **not** re-run
 - Without middleware running, auth cookies are not refreshed on the response
-- `window.location.href` triggers a full HTTP request → middleware runs → cookies are set → `initializeAuth()` fires on the new page with a valid session
+- `window.location.href` triggers a full HTTP request → middleware runs → cookies are set → the browser reconciliation effect can pick up the fresh session
 
 **Never use `router.push` for post-auth redirects.**
 
@@ -223,8 +225,8 @@ Do not modify the following without understanding the implications:
 - The order of operations in `updateSession()` — there must be no code between `createServerClient` and `supabase.auth.getUser()`
 - The cookie `getAll`/`setAll` handlers — they are the bridge between Next.js and Supabase
 - The middleware matcher pattern — it must exclude static assets but run on all page routes
-- The `AuthProvider` wrapping in `layout.tsx` — all pages need auth context
-- The sync/async split in `AuthContext.tsx` `onAuthStateChange` — see section 4.5
+- The server-seeded `AuthProvider` wrapping in `layout.tsx` — all pages need auth context and the initial request user/profile
+- The `AuthContext.tsx` reconciliation pattern — preserve `resetClient()`, `sessionVersion`, and the mount/pathname reconciliation effect
 
 ---
 
@@ -451,7 +453,7 @@ For production, add your domain to Supabase:
 
 ### "Signup works but user can't log in immediately"
 **Cause:** Email confirmation is enabled in Supabase. The user must click a confirmation link before their account is active.
-**Fix:** Supabase Dashboard → Authentication → Sign In / Providers → Email → toggle off **"Confirm email"**.
+**Fix:** Either click the confirmation link from the email, or disable **"Confirm email"** in Supabase if you want signup to create a session immediately during local development.
 
 ### "Profile not found after signup"
 **Cause:** The `handle_new_user` trigger in migration 004 was not run.
@@ -471,7 +473,7 @@ For production, add your domain to Supabase:
 
 ### "Sign out doesn't work properly"
 **Cause:** Missing server-side signout route.
-**Fix:** Ensure `src/app/auth/signout/route.ts` exists and calls `supabase.auth.signOut()`.
+**Fix:** Ensure `src/app/auth/signout/route.ts` exists, performs server-side `supabase.auth.signOut()`, clears cookies onto the redirect response, and sends `Cache-Control: no-store`.
 
 ### "Page not protected"
 **Cause:** Route not in the `protectedPaths` array.
@@ -495,7 +497,7 @@ If you are an AI coding agent (Claude, Codex, Cursor, etc.) building on this tem
 
 - **Do not modify** the `updateSession()` function in `src/lib/supabase/middleware.ts`
 - **Do not modify** the cookie handlers in `src/lib/supabase/client.ts` or `server.ts`
-- **Do not modify** `AuthContext.tsx` — the sync/async split in `onAuthStateChange` is intentional and critical
+- **Do not modify** `AuthContext.tsx` unless you preserve the server seed, browser reconciliation, `resetClient()`, and `sessionVersion` pattern
 - **Do not remove** the `AuthProvider` from `src/app/layout.tsx`
 - **Do not remove** the `signout` route at `src/app/auth/signout/route.ts`
 - **Do not use** `router.push` for post-auth redirects — always use `window.location.href`

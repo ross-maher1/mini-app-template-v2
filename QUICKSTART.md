@@ -68,7 +68,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 In your Supabase project:
 
 1. Go to **Authentication → Sign In / Providers → Email**
-2. **Turn off "Confirm email"** — this lets users sign up and log in immediately without needing to click a confirmation link
+2. Optional for local dev: **turn off "Confirm email"** if you want signup to create a session immediately
 3. Go to **Authentication → URL Configuration**
 4. Under **Redirect URLs**, add: `http://localhost:3000/**`
 
@@ -97,7 +97,7 @@ Open [http://localhost:3000](http://localhost:3000).
 Run through this quick test to confirm everything is working:
 
 - [ ] Visiting `/` redirects you to the login page
-- [ ] Signing up takes you to the dashboard immediately (no confirmation email)
+- [ ] Signing up either takes you to the dashboard immediately or shows the "check your email" state, depending on your Supabase email-confirmation setting
 - [ ] Going to `/demo` lets you add and delete notes
 - [ ] Signing out redirects you back to login
 - [ ] Signing back in shows your notes are still there
@@ -234,7 +234,7 @@ In Supabase → **Authentication → URL Configuration**:
 
 **If something breaks with auth**, the most common causes are:
 1. Stale cookies — clear `sb-` cookies in browser DevTools
-2. Email confirmation is on — turn it off in Supabase Auth settings
+2. Email confirmation is on — signup will show the "check your email" state instead of creating a session immediately
 3. Migration 004 wasn't run — the profile trigger won't exist
 
 ---

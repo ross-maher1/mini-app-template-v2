@@ -82,14 +82,17 @@ Browser Request
 ┌─────────────────────────────────┐
 │  Page Render                    │
 │                                 │
-│  AuthProvider initialises:      │
-│  1. initializeAuth()            │
-│     ├─ auth.getSession()        │
-│     └─ fetchProfile(userId)     │
-│  2. onAuthStateChange listener  │
-│     (synchronous only —         │
-│      handles SIGNED_OUT and     │
-│      TOKEN_REFRESHED only)      │
+│  Root layout seeds auth:        │
+│  1. auth.getUser() on server    │
+│  2. fetchProfile(userId)        │
+│  3. AuthProvider receives       │
+│     initialUser + initialProfile│
+│                                 │
+│  Browser then reconciles:       │
+│  1. auth.getSession()           │
+│  2. auth.getUser()              │
+│  3. fetchProfile(userId)        │
+│  4. bump sessionVersion         │
 │                                 │
 │  Components use useAuth() to    │
 │  access user, profile, methods  │
@@ -98,7 +101,7 @@ Browser Request
 
 ### Sign Up Flow
 
-> Email confirmation is **disabled** in this template. Signup immediately creates an active session.
+> The template supports both signup flows. If email confirmation is off, signup creates a session immediately. If it is on, signup shows the check-email state.
 
 ```
 User submits signup form
@@ -115,13 +118,12 @@ Supabase creates auth.users record
     │  └─ handle_new_user() inserts into profiles
     │
     ▼
-Session established immediately (no email confirmation step)
-    │
-    ▼
-window.location.href = "/"  ← full page reload (NOT router.push)
-    │
-    ▼
-Middleware runs → cookies set → initializeAuth() fetches profile → dashboard
+If signup returned a session:
+    ├─ window.location.href = "/"  ← full page reload
+    └─ Middleware runs → cookies set → browser reconciliation picks up fresh session
+
+If signup did not return a session:
+    └─ Show "Check Your Email"
 ```
 
 ### Sign In Flow
@@ -139,7 +141,7 @@ AuthContext.signIn()
 Login page: window.location.href = redirectTo  ← full page reload (NOT router.push)
     │
     ▼
-Middleware runs → cookies set → initializeAuth() fetches session + profile → dashboard
+Middleware runs → cookies set → browser reconciliation validates session + profile → dashboard
 ```
 
 > **Why `window.location.href` and not `router.push`?**
@@ -153,8 +155,14 @@ User clicks Sign Out
     ▼
 AuthContext.signOut()
     │
-    ├─ supabase.auth.signOut()  (client-side, clears local state)
-    ├─ window.location.href = "/auth/login"  ← full page reload
+    ├─ clearAuthState() + resetClient()
+    ├─ window.location.replace("/auth/signout")
+    │
+    ▼
+Server signout route
+    ├─ supabase.auth.signOut()
+    ├─ clear cookies on redirect response
+    └─ redirect to /auth/login with no-store cache headers
 ```
 
 ---

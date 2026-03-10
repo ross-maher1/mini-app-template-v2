@@ -25,7 +25,8 @@ cp .env.example .env.local
 
 # 5. Configure Supabase Auth
 # Go to Authentication > Sign In / Providers > Email
-# Disable "Confirm email" (so signup creates a session immediately)
+# Optional for local dev: disable "Confirm email" so signup creates a session immediately
+# The template supports both flows; if you leave it on, signup will show a check-email state
 # Go to Authentication > URL Configuration
 # Add redirect URL: http://localhost:3000/**
 

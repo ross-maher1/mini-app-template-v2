@@ -30,11 +30,12 @@ const noteSchema = z.object({
 type NoteFormValues = z.infer<typeof noteSchema>;
 
 export default function DemoPage() {
-  const { user } = useAuth();
+  const { user, sessionVersion } = useAuth();
   const [notes, setNotes] = useState<DemoNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const userId = user?.id ?? null;
 
   const supabase = useMemo(() => {
     try {
@@ -56,14 +57,20 @@ export default function DemoPage() {
   });
 
   const fetchNotes = useCallback(async () => {
-    if (!user || !supabase) {
+    if (!sessionVersion || !supabase) {
+      return;
+    }
+
+    if (!userId) {
+      setNotes([]);
       setLoading(false);
       return;
     }
+
     const { data, error } = await supabase
       .from("demo_notes")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -72,7 +79,7 @@ export default function DemoPage() {
       setNotes(data || []);
     }
     setLoading(false);
-  }, [user, supabase]);
+  }, [sessionVersion, supabase, userId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

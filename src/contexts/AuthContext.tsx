@@ -5,16 +5,18 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type {
   Session,
   User,
   AuthError,
   AuthChangeEvent,
 } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, resetClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 
 // ============================================================================
@@ -42,11 +44,14 @@ export interface AuthState {
 
 export interface AuthContextValue extends AuthState {
   signIn: (credentials: SignInCredentials) => Promise<{ error: AuthError | null }>;
-  signUp: (credentials: SignUpCredentials) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    credentials: SignUpCredentials
+  ) => Promise<{ error: AuthError | null; session: Session | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
   refreshProfile: () => Promise<void>;
+  sessionVersion: number;
 }
 
 // ============================================================================
@@ -59,14 +64,27 @@ export const AuthContext = createContext<AuthContextValue | null>(null);
 // PROVIDER
 // ============================================================================
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+interface AuthProviderProps {
+  children: ReactNode;
+  initialUser?: User | null;
+  initialProfile?: Profile | null;
+}
+
+export function AuthProvider({
+  children,
+  initialUser = null,
+  initialProfile = null,
+}: AuthProviderProps) {
+  const pathname = usePathname();
+
   const [state, setState] = useState<AuthState>({
-    user: null,
+    user: initialUser,
     session: null,
-    profile: null,
-    loading: true,
+    profile: initialProfile,
+    loading: false,
     error: null,
   });
+  const [sessionVersion, setSessionVersion] = useState(0);
 
   const supabase = useMemo(() => {
     try {
@@ -79,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = useCallback(
     async (userId: string): Promise<Profile | null> => {
       if (!supabase) return null;
+
       try {
         const { data, error } = await supabase
           .from("profiles")
@@ -106,60 +125,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, profile }));
   }, [state.user, fetchProfile]);
 
+  const clearAuthState = useCallback(
+    (error: AuthError | Error | null = null) => {
+      resetClient();
+      setState({
+        user: null,
+        session: null,
+        profile: null,
+        loading: false,
+        error,
+      });
+    },
+    []
+  );
+
+  const currentUserIdRef = useRef<string | null>(initialUser?.id ?? null);
+
   useEffect(() => {
     if (!supabase) {
-      setState((prev) => ({ ...prev, loading: false }));
       return;
     }
-
-    const initializeAuth = async () => {
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          setState((prev) => ({ ...prev, error, loading: false }));
-          return;
-        }
-
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setState({
-            user: session.user,
-            session,
-            profile,
-            loading: false,
-            error: null,
-          });
-        } else {
-          setState({
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            error: null,
-          });
-        }
-      } catch (err) {
-        setState((prev) => ({
-          ...prev,
-          error:
-            err instanceof Error ? err : new Error("Failed to initialize auth"),
-          loading: false,
-        }));
-      }
-    };
-
-    initializeAuth();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
       async (_event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
+          const newUserId = session.user.id;
+          const previousUserId = currentUserIdRef.current;
+
+          if (previousUserId && previousUserId !== newUserId) {
+            resetClient();
+          }
+
+          currentUserIdRef.current = newUserId;
+
+          const profile = await fetchProfile(newUserId);
           setState({
             user: session.user,
             session,
@@ -167,14 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading: false,
             error: null,
           });
+          setSessionVersion((version) => version + 1);
         } else {
-          setState({
-            user: null,
-            session: null,
-            profile: null,
-            loading: false,
-            error: null,
-          });
+          currentUserIdRef.current = null;
+          clearAuthState();
+          setSessionVersion((version) => version + 1);
         }
       }
     );
@@ -182,7 +180,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile]);
+  }, [supabase, fetchProfile, clearAuthState]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await supabase.auth.getSession();
+
+        const {
+          data: { user: browserUser },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          throw userError;
+        }
+
+        if (cancelled) return;
+
+        if (browserUser) {
+          const profile = await fetchProfile(browserUser.id);
+          if (!cancelled) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+
+            currentUserIdRef.current = browserUser.id;
+            setState({
+              user: browserUser,
+              session: session ?? null,
+              profile,
+              loading: false,
+              error: null,
+            });
+          }
+        } else if (state.user) {
+          currentUserIdRef.current = null;
+          clearAuthState();
+        }
+      } catch (err) {
+        if (cancelled) return;
+
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error:
+            prev.user || prev.profile
+              ? null
+              : err instanceof Error
+                ? err
+                : new Error("Failed to reconcile auth state"),
+        }));
+      } finally {
+        if (!cancelled) {
+          setSessionVersion((version) => version + 1);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-run after navigation so the browser client picks up updated auth cookies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, pathname]);
 
   const signIn = useCallback(
     async ({ email, password }: SignInCredentials) => {
@@ -190,6 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const error = new Error("Supabase not initialized") as AuthError;
         return { error };
       }
+
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
       const { error } = await supabase.auth.signInWithPassword({
@@ -210,11 +275,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async ({ email, password, fullName }: SignUpCredentials) => {
       if (!supabase) {
         const error = new Error("Supabase not initialized") as AuthError;
-        return { error };
+        return { error, session: null };
       }
+
       setState((prev) => ({ ...prev, loading: true, error: null }));
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -226,19 +292,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         setState((prev) => ({ ...prev, loading: false, error }));
+      } else if (!data?.session) {
+        setState((prev) => ({ ...prev, loading: false, error: null }));
       }
 
-      return { error };
+      return { error, session: data?.session ?? null };
     },
     [supabase]
   );
 
   const signOut = useCallback(async () => {
-    if (!supabase) return;
     setState((prev) => ({ ...prev, loading: true }));
-    await supabase.auth.signOut();
-    window.location.href = "/auth/login";
-  }, [supabase]);
+    clearAuthState();
+    window.location.replace("/auth/signout");
+  }, [clearAuthState]);
 
   const resetPassword = useCallback(
     async (email: string) => {
@@ -246,9 +313,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const error = new Error("Supabase not initialized") as AuthError;
         return { error };
       }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
+
       return { error };
     },
     [supabase]
@@ -260,6 +329,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const error = new Error("Supabase not initialized") as AuthError;
         return { error };
       }
+
       const { error } = await supabase.auth.updateUser({ password });
       return { error };
     },
@@ -274,6 +344,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     updatePassword,
     refreshProfile,
+    sessionVersion,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

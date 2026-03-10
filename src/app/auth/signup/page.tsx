@@ -38,7 +38,7 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await signUp({
+    const { error, session } = await signUp({
       email: values.email,
       password: values.password,
       fullName: values.fullName,
@@ -47,6 +47,13 @@ export default function SignupPage() {
     if (error) {
       setError(error.message);
       setLoading(false);
+      return;
+    }
+
+    if (session) {
+      // Full page reload ensures middleware re-runs and sets auth cookies
+      // eslint-disable-next-line react-hooks/immutability
+      window.location.href = "/";
       return;
     }
 
