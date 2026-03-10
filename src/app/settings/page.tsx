@@ -4,7 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { APP_NAME } from "@/lib/constants";
 
 export default function SettingsPage() {
-  const { profile, sessionVersion, signOut } = useAuth();
+  const { user, profile, sessionVersion, signOut } = useAuth();
+  const fullName =
+    profile?.full_name ??
+    (typeof user?.user_metadata?.full_name === "string"
+      ? user.user_metadata.full_name
+      : null);
+  const email = profile?.email ?? user?.email ?? "Unavailable";
+  const subscriptionTier = profile?.subscription_tier ?? "free";
 
   return (
     <main className="space-y-10">
@@ -18,28 +25,28 @@ export default function SettingsPage() {
       {/* Profile */}
       <div className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm max-w-lg">
         <h2 className="text-lg font-semibold">Profile</h2>
-        {profile && sessionVersion > 0 ? (
+        {sessionVersion > 0 && user ? (
           <div className="mt-4 space-y-3">
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">
                 Name
               </p>
               <p className="text-sm text-slate-900">
-                {profile.full_name || "Not set"}
+                {fullName || "Not set"}
               </p>
             </div>
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">
                 Email
               </p>
-              <p className="text-sm text-slate-900">{profile.email}</p>
+              <p className="text-sm text-slate-900">{email}</p>
             </div>
             <div>
               <p className="text-xs font-medium uppercase text-slate-500">
                 Plan
               </p>
               <p className="text-sm text-slate-900 capitalize">
-                {profile.subscription_tier}
+                {subscriptionTier}
               </p>
             </div>
           </div>

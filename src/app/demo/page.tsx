@@ -30,7 +30,7 @@ const noteSchema = z.object({
 type NoteFormValues = z.infer<typeof noteSchema>;
 
 export default function DemoPage() {
-  const { user, sessionVersion } = useAuth();
+  const { user, profile, sessionVersion } = useAuth();
   const [notes, setNotes] = useState<DemoNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +89,11 @@ export default function DemoPage() {
   const onSubmit = async (values: NoteFormValues) => {
     if (!user || !supabase) return;
     setError(null);
+
+    if (!profile) {
+      setError("Your profile is still syncing. Wait a moment and try again.");
+      return;
+    }
 
     if (editingId) {
       // Update existing note
@@ -213,7 +218,8 @@ export default function DemoPage() {
               )}
               <button
                 type="submit"
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800"
+                disabled={!profile}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {editingId ? "Update note" : "Add note"}
               </button>

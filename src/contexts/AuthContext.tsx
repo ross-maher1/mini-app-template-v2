@@ -84,7 +84,7 @@ export function AuthProvider({
     loading: false,
     error: null,
   });
-  const [sessionVersion, setSessionVersion] = useState(0);
+  const [sessionVersion, setSessionVersion] = useState(initialUser ? 1 : 0);
 
   const supabase = useMemo(() => {
     try {
@@ -103,7 +103,7 @@ export function AuthProvider({
           .from("profiles")
           .select("*")
           .eq("id", userId)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Error fetching profile:", error);
@@ -119,11 +119,55 @@ export function AuthProvider({
     [supabase]
   );
 
+  const ensureProfile = useCallback(
+    async (user: User): Promise<Profile | null> => {
+      const existingProfile = await fetchProfile(user.id);
+      if (existingProfile) {
+        return existingProfile;
+      }
+
+      if (!supabase || !user.email) {
+        return null;
+      }
+
+      try {
+        const fullName =
+          typeof user.user_metadata?.full_name === "string"
+            ? user.user_metadata.full_name
+            : null;
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: user.id,
+              email: user.email,
+              full_name: fullName,
+            },
+            { onConflict: "id" }
+          )
+          .select("*")
+          .single();
+
+        if (error) {
+          console.error("Error creating missing profile:", error);
+          return null;
+        }
+
+        return data;
+      } catch (err) {
+        console.error("Error creating missing profile:", err);
+        return null;
+      }
+    },
+    [fetchProfile, supabase]
+  );
+
   const refreshProfile = useCallback(async () => {
     if (!state.user) return;
-    const profile = await fetchProfile(state.user.id);
+    const profile = await ensureProfile(state.user);
     setState((prev) => ({ ...prev, profile }));
-  }, [state.user, fetchProfile]);
+  }, [state.user, ensureProfile]);
 
   const clearAuthState = useCallback(
     (error: AuthError | Error | null = null) => {
@@ -160,7 +204,7 @@ export function AuthProvider({
 
           currentUserIdRef.current = newUserId;
 
-          const profile = await fetchProfile(newUserId);
+          const profile = await ensureProfile(session.user);
           setState({
             user: session.user,
             session,
@@ -180,7 +224,7 @@ export function AuthProvider({
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, fetchProfile, clearAuthState]);
+  }, [supabase, ensureProfile, clearAuthState]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -202,7 +246,7 @@ export function AuthProvider({
         if (cancelled) return;
 
         if (browserUser) {
-          const profile = await fetchProfile(browserUser.id);
+          const profile = await ensureProfile(browserUser);
           if (!cancelled) {
             const {
               data: { session },
