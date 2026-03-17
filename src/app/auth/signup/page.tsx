@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const signupSchema = z.object({
   fullName: z.string().min(1, "Name is required"),
@@ -133,9 +134,8 @@ export default function SignupPage() {
             <label className="text-sm font-medium text-slate-700">
               Password
             </label>
-            <input
+            <PasswordInput
               {...register("password")}
-              type="password"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
               placeholder="••••••••"
             />

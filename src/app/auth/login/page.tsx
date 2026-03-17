@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { getSafeRedirect } from "@/lib/utils";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -17,7 +19,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/";
+  const redirectTo = getSafeRedirect(searchParams.get("redirect"));
   const { signIn } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,9 +80,8 @@ function LoginForm() {
 
         <div>
           <label className="text-sm font-medium text-slate-700">Password</label>
-          <input
+          <PasswordInput
             {...register("password")}
-            type="password"
             className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
             placeholder="••••••••"
           />
