@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { getSafeRedirect } from "@/lib/utils";
+import { toast } from "@/lib/toast";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -24,6 +25,23 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = getSafeRedirect(searchParams.get("redirect"));
   const { signIn } = useAuth();
+
+  useEffect(() => {
+    const toastType = searchParams.get("toast");
+    if (!toastType) return;
+
+    const messages: Record<string, { type: "success" | "error"; text: string }> = {
+      "password-reset-success": { type: "success", text: "Password reset successful. Please sign in." },
+      "password-reset-error": { type: "error", text: "Password reset link is invalid or expired." },
+    };
+
+    const msg = messages[toastType];
+    if (msg) {
+      toast[msg.type](msg.text);
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [searchParams]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

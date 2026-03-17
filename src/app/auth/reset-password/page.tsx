@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      router.push("/auth/login?message=Password updated successfully");
+      router.push("/auth/login?toast=password-reset-success");
     } catch {
       setError("An error occurred. Please try again.");
       setLoading(false);

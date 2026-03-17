@@ -14,6 +14,6 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.redirect(
-    `${origin}/auth/login?message=Password reset link is invalid or expired`
+    `${origin}/auth/login?toast=password-reset-error`
   );
 }
