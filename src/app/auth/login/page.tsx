@@ -37,10 +37,14 @@ function LoginForm() {
 
     const msg = messages[toastType];
     if (msg) {
-      toast[msg.type](msg.text);
+      // Small delay ensures the Toaster component is mounted
+      setTimeout(() => toast[msg.type](msg.text), 100);
     }
 
-    window.history.replaceState({}, "", window.location.pathname);
+    // Remove toast param from URL while preserving other params
+    const url = new URL(window.location.href);
+    url.searchParams.delete("toast");
+    window.history.replaceState({}, "", url.toString());
   }, [searchParams]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
