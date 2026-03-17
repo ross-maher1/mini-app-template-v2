@@ -7,6 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { FormField } from "@/components/ui/FormField";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { Button } from "@/components/ui/Button";
 
 const signupSchema = z.object({
   fullName: z.string().min(1, "Name is required"),
@@ -92,68 +95,39 @@ export default function SignupPage() {
 
       <div className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm max-w-md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
+          <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">
-              Full Name
-            </label>
-            <input
-              {...register("fullName")}
-              type="text"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
-              placeholder="John Doe"
-            />
-            {errors.fullName && (
-              <p className="mt-1 text-xs text-rose-600">
-                {errors.fullName.message}
-              </p>
-            )}
-          </div>
+          <FormField
+            id="fullName"
+            label="Full Name"
+            type="text"
+            placeholder="John Doe"
+            error={errors.fullName?.message}
+            {...register("fullName")}
+          />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <input
-              {...register("email")}
-              type="email"
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
-              placeholder="you@example.com"
-            />
-            {errors.email && (
-              <p className="mt-1 text-xs text-rose-600">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
+          <FormField
+            id="email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
+            error={errors.email?.message}
+            {...register("email")}
+          />
 
-          <div>
-            <label className="text-sm font-medium text-slate-700">
-              Password
-            </label>
+          <FormField id="password" label="Password" error={errors.password?.message}>
             <PasswordInput
+              id="password"
               {...register("password")}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm transition-colors focus:border-slate-400 focus:outline-none"
               placeholder="••••••••"
             />
-            {errors.password && (
-              <p className="mt-1 text-xs text-rose-600">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
+          </FormField>
 
           <div className="flex items-center justify-end pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800 disabled:opacity-50"
-            >
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
+            <Button type="submit" loading={loading}>
+              Create Account
+            </Button>
           </div>
         </form>
 
