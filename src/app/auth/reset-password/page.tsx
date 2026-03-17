@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const resetPasswordSchema = z
   .object({
@@ -80,9 +81,8 @@ export default function ResetPasswordPage() {
             <label className="text-sm font-medium text-slate-700">
               New Password
             </label>
-            <input
+            <PasswordInput
               {...register("password")}
-              type="password"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
               placeholder="••••••••"
             />
@@ -97,9 +97,8 @@ export default function ResetPasswordPage() {
             <label className="text-sm font-medium text-slate-700">
               Confirm Password
             </label>
-            <input
+            <PasswordInput
               {...register("confirmPassword")}
-              type="password"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
               placeholder="••••••••"
             />

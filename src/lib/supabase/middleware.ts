@@ -75,6 +75,7 @@ export function isPublicPath(pathname: string): boolean {
     "/auth/callback",
     "/auth/forgot-password",
     "/auth/reset-password",
+    "/auth/reset-callback",
   ];
   return publicPaths.includes(pathname);
 }

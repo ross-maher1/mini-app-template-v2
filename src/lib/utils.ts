@@ -45,3 +45,14 @@ export const safeJsonParse = <T>(json: string, fallback: T): T => {
     return fallback;
   }
 };
+
+/**
+ * Returns a safe redirect path. Only allows relative paths starting with `/`.
+ * Rejects absolute URLs, protocol-relative URLs, and anything else suspicious.
+ */
+export function getSafeRedirect(redirect: string | null | undefined): string {
+  if (!redirect || !redirect.startsWith("/") || redirect.startsWith("//")) {
+    return "/";
+  }
+  return redirect;
+}
