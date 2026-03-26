@@ -28,70 +28,62 @@ export default function PeoplePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-purple-300 pb-28">
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-white/30 backdrop-blur flex items-center justify-center">
-              <span className="text-3xl font-bold text-white">G</span>
-            </div>
-            <h1 className="text-5xl font-bold text-white">People</h1>
-          </div>
-          <div className="text-right text-white text-sm">
-            <div>Band | {stats.band.toString().padStart(2, "0")}</div>
-            <div>Crew | {stats.crew.toString().padStart(2, "0")}</div>
-            <div>Other | {stats.other.toString().padStart(2, "0")}</div>
-          </div>
+    <main className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-end">
+        <div className="space-y-2">
+          <p className="type-meta">Directory</p>
+          <h1 className="type-h1">People</h1>
         </div>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search by name or tag"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-full bg-white/90 backdrop-blur text-gray-900 placeholder:text-gray-500 placeholder:italic"
-          />
+        <div className="text-right text-sm text-slate-500 space-y-0.5">
+          <div>Band | {stats.band.toString().padStart(2, "0")}</div>
+          <div>Crew | {stats.crew.toString().padStart(2, "0")}</div>
+          <div>Other | {stats.other.toString().padStart(2, "0")}</div>
         </div>
+      </div>
 
-        {/* People List */}
-        <div className="space-y-0">
-          {filteredPeople.map((person, index) => (
-            <div key={person.id}>
-              <button
-                onClick={() => router.push(`/people/${person.id}`)}
-                className="w-full text-left py-4 hover:bg-white/20 transition-colors"
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-1 italic">
-                      {person.name}
-                    </h2>
-                    <div className="text-sm text-gray-700">
-                      {person.role} | {person.type}
-                    </div>
-                  </div>
-                  {person.phone && (
-                    <div className="text-sm text-gray-700">{person.phone}</div>
-                  )}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Search by name or tag"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white/85 text-slate-900 placeholder:text-slate-400 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+        />
+      </div>
+
+      {/* People List */}
+      <div className="rounded-2xl border border-slate-200 bg-white/85 shadow-sm divide-y divide-dashed divide-slate-200">
+        {filteredPeople.map((person) => (
+          <button
+            key={person.id}
+            onClick={() => router.push(`/people/${person.id}`)}
+            className="w-full text-left px-5 py-4 hover:bg-slate-50/50 transition-colors"
+          >
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1">
+                <h2 className="type-item-title text-base mb-0.5">
+                  {person.name}
+                </h2>
+                <div className="text-sm text-slate-500">
+                  {person.role} | {person.type}
                 </div>
-              </button>
-              {index < filteredPeople.length - 1 && (
-                <div className="border-b border-dashed border-gray-400" />
+              </div>
+              {person.phone && (
+                <div className="text-xs text-slate-400">{person.phone}</div>
               )}
             </div>
-          ))}
-        </div>
-
-        {filteredPeople.length === 0 && (
-          <div className="text-center py-12 text-gray-600">
-            No people found matching your criteria
-          </div>
-        )}
+          </button>
+        ))}
       </div>
-    </div>
+
+      {filteredPeople.length === 0 && (
+        <div className="text-center py-12 text-slate-500 text-sm">
+          No people found matching your criteria
+        </div>
+      )}
+    </main>
   );
 }

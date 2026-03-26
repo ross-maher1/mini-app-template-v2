@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useGigs } from "@/contexts/GigContext";
 import { mockPersonDetails } from "@/lib/data";
+import { StatusDropdown } from "@/components/gigs/StatusDropdown";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -25,107 +26,101 @@ export default function PersonDetailPage() {
 
   if (!person) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-purple-300 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            Person not found
-          </h1>
-          <button
-            onClick={() => router.push("/people")}
-            className="px-6 py-2 bg-white/80 rounded-full hover:bg-white transition-colors"
-          >
-            Back to People
-          </button>
+      <main className="space-y-6">
+        <button
+          onClick={() => router.push("/people")}
+          className="text-sm text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          People
+        </button>
+        <div className="text-center py-12 text-slate-500 text-sm">
+          Person not found
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-purple-300 pb-28">
-      <div className="p-6">
-        {/* Back button */}
-        <button
-          onClick={() => router.push("/people")}
-          className="mb-4 p-2 hover:bg-white/20 rounded-lg transition-colors inline-flex items-center gap-2 text-gray-700"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+    <main className="space-y-6">
+      {/* Back */}
+      <button
+        onClick={() => router.push("/people")}
+        className="text-sm text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-1"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        People
+      </button>
 
-        {/* Stats Header */}
-        <div className="text-white text-sm mb-6">
-          Upcoming gigs ({person.upcomingGigs}) | To Reconcile (
-          {person.toReconcile}) | All time gigs ({person.allTimeGigs})
+      {/* Stats */}
+      <div className="flex justify-end">
+        <div className="text-right text-sm text-slate-500 space-y-0.5">
+          <div>Upcoming | {person.upcomingGigs.toString().padStart(2, "0")}</div>
+          <div>
+            To Reconcile | {person.toReconcile.toString().padStart(2, "0")}
+          </div>
+          <div>
+            All Time | {person.allTimeGigs.toString().padStart(2, "0")}
+          </div>
         </div>
+      </div>
 
-        {/* Profile Photo */}
-        <div className="flex justify-center mb-6">
-          <div className="w-32 h-32 rounded-full bg-white border-4 border-gray-300" />
+      {/* Profile Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm text-center space-y-3">
+        <div className="flex justify-center">
+          <div className="w-24 h-24 rounded-full bg-slate-100 border-2 border-slate-200" />
         </div>
-
-        {/* Location */}
-        <div className="text-center text-gray-800 mb-2">{person.location}</div>
-
-        {/* Name */}
-        <h1 className="text-5xl font-bold italic text-gray-900 text-center mb-3">
-          {person.name}
-        </h1>
-
-        {/* Roles */}
-        <div className="text-center text-gray-800 mb-6">
+        <div className="text-xs text-slate-500">{person.location}</div>
+        <h1 className="type-h1">{person.name}</h1>
+        <div className="text-sm text-slate-500">
           {person.roles.join(" | ")}
         </div>
+      </div>
 
-        <div className="border-b border-dashed border-gray-400 mb-6" />
-
-        {/* Bands Section */}
-        <div className="text-center mb-6">
+      {/* Bands Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-sm">
+        <h2 className="type-item-title text-base mb-3">Bands</h2>
+        <div className="space-y-1">
           {person.bands.map((band, index) => (
-            <div key={index} className="text-gray-800 mb-1">
+            <div key={index} className="text-sm text-slate-600">
               {band}
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="border-b border-dashed border-gray-400 mb-6" />
-
-        {/* Gigs List */}
-        <div className="space-y-6">
-          {displayGigs.map((gig, index) => (
-            <div
+      {/* Gigs */}
+      {displayGigs.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white/85 shadow-sm divide-y divide-dashed divide-slate-200">
+          {displayGigs.map((gig) => (
+            <button
               key={gig.id}
               onClick={() => router.push(`/gigs/${gig.id}`)}
-              className="cursor-pointer hover:opacity-80 transition-opacity"
+              className="w-full text-left px-5 py-4 hover:bg-slate-50/50 transition-colors"
             >
-              <div className="flex justify-between items-start gap-4 mb-2">
-                <div className="flex-1">
-                  <div className="text-sm text-gray-700 mb-1">
-                    {gig.date} | {gig.time}
-                  </div>
-                  <h2 className="text-3xl font-bold italic text-gray-900 mb-1">
-                    {gig.title}
-                  </h2>
-                  <div className="text-sm text-gray-700">{gig.details}</div>
-                </div>
-                <div className="bg-[#f5a623] px-6 py-2 rounded-full">
-                  <span className="text-sm font-bold text-gray-900">
-                    {gig.status}
-                  </span>
-                </div>
+              <div className="flex justify-end mb-1.5">
+                <StatusDropdown
+                  currentStatus={gig.status}
+                  onStatusChange={() => {}}
+                />
               </div>
-              {index < displayGigs.length - 1 && (
-                <div className="border-b border-dashed border-gray-400 mt-6" />
-              )}
-            </div>
+              <div className="text-xs text-slate-500 mb-1">
+                {gig.date} | {gig.time}
+              </div>
+              <h3 className="type-item-title text-base mb-0.5">
+                {gig.title}
+              </h3>
+              <div className="text-sm text-slate-500">{gig.details}</div>
+            </button>
           ))}
         </div>
+      )}
 
-        {displayGigs.length === 0 && (
-          <div className="text-center py-8 text-gray-600">
-            No gigs assigned to this person yet
-          </div>
-        )}
-      </div>
-    </div>
+      {displayGigs.length === 0 && (
+        <div className="text-center py-8 text-slate-500 text-sm">
+          No gigs assigned to this person yet
+        </div>
+      )}
+    </main>
   );
 }
