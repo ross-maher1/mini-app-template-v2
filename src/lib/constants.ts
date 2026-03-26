@@ -17,8 +17,8 @@
  * };
  */
 
-export const APP_NAME = "Mini App";
+export const APP_NAME = "Gig Management";
 
 export const STORAGE_KEYS = {
-  settings: "mini_app_settings",
+  settings: "gig_management_settings",
 } as const;
