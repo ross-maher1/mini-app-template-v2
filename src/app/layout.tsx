@@ -4,6 +4,8 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ToastProvider";
 import AppShell from "@/components/layout/AppShell";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { GigProvider } from "@/contexts/GigContext";
+import { VenueProvider } from "@/contexts/VenueContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,12 +17,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/**
- * >>> Update the metadata for your app. <<<
- */
 export const metadata: Metadata = {
-  title: "Mini App",
-  description: "A mini-app built on the unified-user architecture",
+  title: "Gig Management",
+  description: "Manage your gigs, venues, and people",
 };
 
 export default function RootLayout({
@@ -34,8 +33,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <ToastProvider />
-          <AppShell>{children}</AppShell>
+          <GigProvider>
+            <VenueProvider>
+              <ToastProvider />
+              <AppShell>{children}</AppShell>
+            </VenueProvider>
+          </GigProvider>
         </AuthProvider>
       </body>
     </html>
