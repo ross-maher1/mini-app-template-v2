@@ -239,4 +239,12 @@ In Supabase → **Authentication → URL Configuration**:
 
 ---
 
+---
+
+## Integrating External Code (Figma Make, V0, etc.)
+
+If you're integrating code from an external generator rather than building from scratch, read the **"Integrating External UI Output"** section in `HOW_TO.md` before starting. The key rule: **the template is the base** — add new page files to the template, don't overwrite template files with external versions. Extract only logic (contexts, types, data) from the external output; all visual styling must use the template's design system (cream background, blob gradient, white cards).
+
+---
+
 If you get stuck, check `MINI_APP_GUIDE.md` for more detail, or look at the Expense Tracker POC (`ross-maher1/expense-tracker-poc`) as a complete working example.

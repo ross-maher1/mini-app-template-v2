@@ -293,6 +293,21 @@ export default function MyPage() {
 - Card pattern: `rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm`
 - Button pattern: `rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800`
 
+### Design System (Critical for Integrations)
+
+The template's visual identity is defined by these elements. When integrating external code, all of these must be preserved:
+
+- **Background:** Cream `#f7f1ea` via CSS variable `--background`, applied to both `body` and `.app-shell`
+- **Blob:** `.app-blob` class in `globals.css` — a blurred radial gradient (amber/rose/purple) positioned at the top. Rendered via `<div className="app-blob">` in `AppShell.tsx`
+- **Content container:** `.app-content` with `px-6 pb-28 pt-10` padding (pb-28 provides space above BottomBar)
+- **Cards:** White semi-transparent with subtle border: `rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm`
+- **Typography:** Custom utility classes `.type-meta` (uppercase label), `.type-h1` (page heading), `.type-lead` (subtitle), `.type-item-title` (list item)
+- **Page structure:** `<main className="space-y-10">` with header section (`space-y-2` containing `type-meta`, `type-h1`, `type-lead`) followed by card sections
+
+**These files define the design system and must never be overwritten during integrations:**
+- `src/app/globals.css`
+- `src/components/layout/AppShell.tsx`
+
 ---
 
 ## Configuration Points

@@ -541,3 +541,41 @@ If you are an AI agent (Claude, Cursor, etc.) building a new mini-app from this 
 - Every table has an `updated_at` trigger using `handle_updated_at()`
 - All auth state flows through `useAuth()` — never call Supabase auth directly in components
 - Post-auth redirects always use `window.location.href`, never `router.push`
+
+---
+
+## Integrating External UI Output (Figma Make, V0, etc.)
+
+When integrating code from external generators (Figma Make, V0, Bolt, etc.) into this template, **the template is the base** — external output must conform to it, not the other way around.
+
+### Why this section exists
+
+Past integrations have failed because external styling overwrote the template's design system. The external code was integrated "inward" (pasting external CSS and layout over template files) instead of "outward" (adding new pages to the existing template shell). This resulted in:
+
+- Template's `globals.css` losing the `.app-blob` class, `bg-[var(--background)]`, and content padding
+- Template's `AppShell.tsx` losing the `<div className="app-blob">` decorative element
+- Pages using external backgrounds (`bg-gradient-to-br from-pink-200 via-purple-200`) instead of the template's cream + blob design
+- Critical CSS fixes being made on disk but never committed, so deployments still showed the broken UI
+
+### Rules
+
+1. **Template files are immutable.** Never overwrite `globals.css`, `AppShell.tsx`, `layout.tsx`, or any `src/components/ui/` file with external versions. Clone the template first, then add new files.
+
+2. **Diff after every step.** Run `git diff origin/main -- src/app/globals.css src/components/layout/AppShell.tsx` to verify no template content was lost. Check specifically for `.app-blob`, `bg-[var(--background)]`, and `px-6 pb-28 pt-10`.
+
+3. **Commit everything together.** Never leave CSS/layout fixes as uncommitted changes while committing page files. Run `git status` after every commit.
+
+4. **Verify visually before pushing.** Start the dev server and confirm cream background, blob gradient, and white cards render correctly.
+
+5. **Extract only logic from external output.** Take: contexts, types, data, business logic. Discard: backgrounds, card styles, navigation, layout shells. All visual presentation uses the template's design system.
+
+6. **No external backgrounds.** If you see `bg-gradient-to-br`, `from-pink-`, `via-purple-`, or similar classes from the external output, they must be removed and replaced with the template's card pattern: `rounded-2xl border border-slate-200 bg-white/85 p-6 shadow-sm`.
+
+### Integration checklist
+
+- [ ] `globals.css` has `.app-blob`, `.app-shell` with `bg-[var(--background)]`, `.app-content` with `px-6 pb-28 pt-10`
+- [ ] `AppShell.tsx` has `<div className="app-blob" aria-hidden="true" />`
+- [ ] No external backgrounds in any page file
+- [ ] All pages use `<main className="space-y-10">` with template card styles
+- [ ] `git status` shows no uncommitted changes
+- [ ] Dev server renders correctly before pushing
