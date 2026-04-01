@@ -16,8 +16,13 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // Skip auth redirect when Supabase is not configured (dev without env vars)
+  const supabaseConfigured =
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   // Redirect unauthenticated users away from protected routes
-  if (!user && isProtectedPath(pathname)) {
+  if (supabaseConfigured && !user && isProtectedPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     url.searchParams.set("redirect", pathname);

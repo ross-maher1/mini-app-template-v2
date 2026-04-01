@@ -2,27 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Plus, Settings } from "lucide-react";
+import { Music, MapPin, Users, Settings, Plus } from "lucide-react";
 
-/**
- * Navigation items for the bottom bar.
- *
- * >>> UPDATE these to match your app's routes. <<<
- */
 const navItems = [
-  { href: "/", icon: Home, label: "Home" },
-  { href: "/demo", icon: FileText, label: "Notes" },
+  { href: "/", icon: Music, label: "Gigs" },
+  { href: "/venues", icon: MapPin, label: "Venues" },
+  { href: "/people", icon: Users, label: "People" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
-/**
- * BottomBar — standard navigation for all mini apps.
- *
- * @param fabHref - Optional. When provided, a "+" FAB renders in the centre
- *                  of the nav bar linking to this route. Each module uses this
- *                  to create a new entity (e.g. "/invoices/new", "/contacts/new").
- *                  When omitted the nav bar renders without a FAB.
- */
 export default function BottomBar({ fabHref }: { fabHref?: string }) {
   const pathname = usePathname();
 
@@ -32,7 +20,10 @@ export default function BottomBar({ fabHref }: { fabHref?: string }) {
 
   const renderNav = (items: typeof navItems) =>
     items.map(({ href, icon: Icon, label }) => {
-      const isActive = pathname === href;
+      const isActive =
+        href === "/"
+          ? pathname === "/" || pathname.startsWith("/gigs")
+          : pathname.startsWith(href);
       return (
         <Link
           key={href}
